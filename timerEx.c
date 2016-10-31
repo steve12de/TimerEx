@@ -15,7 +15,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include "inc/timerEx.h"
+#include "timerEx.h"
 
 /*************************** DATA DECLARATION ***********************/
 static unsigned int timer_val;
