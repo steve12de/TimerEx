@@ -1,39 +1,23 @@
 # TimerEx
 Steve's Timer for embedded linux
-TimerEx.c
-TimerEx.h
-Makefile
+ -TimerEx.c
+ -TimerEx.h
+ -Makefile
+
+Library Functions for any number of Application Timers
+Build as a Library using make.
 
 TO BUILD:
 git clone https://github.com/steve12de/TimerEx.git
 cd TimerEx
-make
+Set up make for compiler (e.g. gcc or arm-none-linux-gnueabi-gcc etc)
+make  (Makefile creates lib/libas-timerEx.a)
+For Test only: gcc --static -c timerEx.c -std=gnu99 -lrt -o timerEx
 
-Creates Cross-compiled library for'arm-none-linux-gnueabi-gcc' at:
-   : TimerEx/lib/timer/libas-timerEx.a
+TO USE:
+Create a structure (TimerEx) containing an array of tm_timers timers[TIMER_MAX]
+Create a timer (one shot or restart) and add to TimerEx
+Check whether timer expired or check timeout period (sec, usec)
 
-To Use Timer.
-    #define TIMER1_EXPIRE       2000 // in ms
-    static int rc;
-   
-    // create timer
-    TimerEx timer1;
-    timer1 = (timer_t*) INF_MALLOC(sizeof(timer_t));
-    if ((rc = (TimerEx_makeTimer((char*)"timer1", timer1, TIMER1_EXPIRE, 0))) == -1)
-    {
-        fprintf(stderr,"----Timer1 Create Error\n" );
-    }
-    else
-    {
-        TimerEx_put_timer(timex, self->timer1, TIMER_ONE_SHOT);
-    }
-    
-    // check timer expired
-    if (TimerEx_retTimerSet(timex, timer1, &timerRef))
-    {
-        fprintf(stderr,"----Timer1:[%d] expire\n",timerRef);
-        TimerEx_stoptimer(timex, timer1);
-    }
-    
-    // re-start Timer
-    TimerEx_starttimer(self->timex, self->timer1, TIMER1_EXPIRE, 0);
+FOR DETAILS OF HOW TO USE IN APPLICATIONS
+See TimerEx.c   
