@@ -1,5 +1,41 @@
 //****************************************************************************
 // File:             timerEx.c
+// Revision:	     3
+// Author   	     Stephen Beko
+// Purpose	         Library Functions for Application Timers
+// Build             As a Library:  make : Makefile creates lib/libas-timerEx.a
+//                   For Test only: gcc --static -c timerEx.c -std=gnu99 -lrt -o timerEx
+// Use:
+//    create a structure (TimerEx) containing an array of tm_timers timers[TIMER_MAX]
+//    if ((self->timex = (INF_MALLOCOBJ(TimerEx))) != NULL)
+//    { TimerEx_construct(self->timex); }
+//    
+//    create a timer
+//    self->timer1 = (timer_t*) INF_MALLOC(sizeof(timer_t));
+//    if ((rc = (TimerEx_makeTimer((char*)"timer1", self->timer1, 
+//              TIMER1_EXPIRE, 0))) == -1)
+//       { print error }
+//    else
+//       set as a TIMER_ONE_SHOT or TIMER_RESTART
+//       { TimerEx_put_timer(self->timex, self->timer1, TIMER_ONE_SHOT); }
+//
+//    Timeout Handler
+//    void TimerEx_timerHandler( int sig, siginfo_t *si, void *uc )
+//    Sets the timer bit in timers and the timer value (struct timeval sec, usec)
+//
+//    check if timer expire - match timerID(self->timer1) to timer number(timerRef), 
+//    return true if expired.
+//    if (TimerEx_retTimerSet(self->timex, self->timer1, &timerRef))
+//        TimerEx_stoptimer(self->timex, self->timer1);
+//
+//    get the timer time
+//    TimerEx_getTime(self->timex, self->timer1, &sec, &usec))
+//
+//    start or restart a timer
+//    TimerEx_starttimer(self->timex, self->timer1, TIMER_PERIOD_MS, 0);
+//
+//    delete timer
+//    TimerEx_deleteTimer(self->timex, self->timer1);
 //****************************************************************************
 
 #include <sys/stat.h>
@@ -105,7 +141,7 @@ int TimerEx_makeTimer(char *name, timer_t *timerID, unsigned int expireMS, unsig
     gettimeofday(&tv, &tz);
     if ((timer_settime(*timerID, 0, &its, NULL)) == -1)
     {
-        //perror("timer_settime");
+        perror("timer_settime");
         return (-1);
     }
     else
@@ -172,10 +208,12 @@ void TimerEx_timerHandler( int sig, siginfo_t *si, void *uc )
 }
 /*
     TimerEx_retTimerSet
+    Returns true if timer expired in self->timers[].timer_bit, clears bit
+    Match the timer ID and return the timer number in *timerRef
 */
 bool TimerEx_retTimerSet(TimerEx* self, timer_t *timer_id, int *timerRef)
 {
-    // Match the timer ID and return the timer number (for shift test)
+    // Match the timer ID and return the timer number
     int i;
     bool ret_val = false;
     for (i = 0; i < self->numTimer; i++)
@@ -203,10 +241,10 @@ bool TimerEx_retTimerSet(TimerEx* self, timer_t *timer_id, int *timerRef)
 */
 bool TimerEx_starttimer(TimerEx* self, timer_t *timer_id, unsigned int expireMS, unsigned int intervalMS )
 {
-    int timerRef;
+    int tRef;
     bool ret_val = true;
     struct itimerspec its;
-    TimerEx_retTimerSet(self, timer_id, &timerRef);
+    TimerEx_retTimerSet(self, timer_id, &tRef);
 
     // first expire
     its.it_value.tv_sec = (time_t)(expireMS/1000);
@@ -231,17 +269,17 @@ bool TimerEx_starttimer(TimerEx* self, timer_t *timer_id, unsigned int expireMS,
     {
         //perror("timer_settime");
         fprintf(stderr,"----TimerEx: Timer:[%d] timer_settime failed:%d -(%s)\n",
-        timerRef, errno, strerror(errno));
+        tRef, errno, strerror(errno));
         ret_val = false;
     }
     else // return 0
     {
-        fprintf(stderr,"----TimerEx: Start Timer:[%d] at sec:%d us:%lu\n", 
-               (int)timerRef, (long)tv.tv_sec,(long)tv.tv_usec);
-        self->timers[timerRef].timer_start_sec  = (long)tv.tv_sec;
-        self->timers[timerRef].timer_start_usec = (long)tv.tv_usec;
-        self->timers[timerRef].timer_end_sec    = 0;
-        self->timers[timerRef].timer_end_usec   = 0;
+        fprintf(stderr,"----TimerEx: Start Timer:[%d] at sec:%lu us:%lu\n",
+        		 tRef, (unsigned long)tv.tv_sec, (unsigned long)tv.tv_usec);
+        self->timers[tRef].timer_start_sec  = (long)tv.tv_sec;
+        self->timers[tRef].timer_start_usec = (long)tv.tv_usec;
+        self->timers[tRef].timer_end_sec    = 0;
+        self->timers[tRef].timer_end_usec   = 0;
     }
     return (ret_val);
 }
@@ -261,11 +299,12 @@ bool TimerEx_stoptimer(TimerEx* self, timer_t *timer_id)
        fprintf(stderr,"----TimerEx: Timer:[%d] timer_gettime failed:%d -(%s)\n",
                 timerRef, errno, strerror(errno));
     }
+    
     struct timeval  tv;
     struct timezone tz;
     gettimeofday(&tv, &tz);
-    fprintf(stderr,"----TimerEx: Timer:[%d] stopped at sec:%d us:%lu\n", 
-               (int)timerRef, (long)tv.tv_sec,(long)tv.tv_usec);
+    fprintf(stderr,"----TimerEx: Start Timer:[%d] at sec:%lu us:%lu\n",
+    		 timerRef, (unsigned long)tv.tv_sec, (unsigned long)tv.tv_usec);
     self->timers[timerRef].timer_end_sec    = (long int)tv.tv_sec;
     self->timers[timerRef].timer_end_usec   = (long int)tv.tv_usec;
  
@@ -281,8 +320,10 @@ bool TimerEx_stoptimer(TimerEx* self, timer_t *timer_id)
      return (ret_val);
 }
 
-
-bool TimerEx_getTimeout(TimerEx* self, timer_t *timer_id, int *sec, int *usec)
+/*
+    TimerEx_getTime
+*/
+bool TimerEx_getTime(TimerEx* self, timer_t *timer_id, int *sec, int *usec)
 {
     int timerRef;
     bool ret_val = false;

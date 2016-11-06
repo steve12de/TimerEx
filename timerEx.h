@@ -1,5 +1,14 @@
 //****************************************************************************
-// File:             TimerEx.h
+// File:             timerEx.h
+// Revision:	     3
+// Author   	     Stephen Beko
+// Purpose	         Library Function Headers for Application Timers
+//
+// Use:
+//    typedef struct test_type{
+//        TimerEx *timex;        // see structures below
+//        timer_t timer1; 
+//        } TEST; 
 //
 //****************************************************************************
 #ifndef TIMEREX_H
@@ -9,7 +18,7 @@
 #include <time.h>
 #include <stdbool.h>
 
-// Max number of Tiumers is number of bits in unsigned long, is 32
+// Max number of Timers is number of bits in unsigned long, is 32
 #define TIMER_MAX    10
 
 typedef enum
@@ -37,12 +46,11 @@ typedef struct TimerEx
 } TimerEx;
 
 void TimerEx_construct(TimerEx* self);
-
 int  TimerEx_makeTimer(char*, timer_t*, unsigned int, unsigned int);
 void TimerEx_put_timer(TimerEx* self, timer_t *timer_id, timer_action act);
 bool TimerEx_retTimerSet(TimerEx* self, timer_t *timer_id, int *timerRef);
 bool TimerEx_stoptimer(TimerEx* self, timer_t *timer_id);
 bool TimerEx_starttimer(TimerEx* self, timer_t *timer_id, unsigned int expireMS, unsigned int intervalMS );
 bool TimerEx_deleteTimer(TimerEx* self, timer_t *timer_id);
-bool TimerEx_getTimeout(TimerEx* self, timer_t *timer_id, int *sec, int *usec);
+bool TimerEx_getTime(TimerEx* self, timer_t *timer_id, int *sec, int *usec);
 #endif  //TIMEREX_H
